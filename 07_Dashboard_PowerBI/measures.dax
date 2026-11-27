@@ -1,0 +1,61 @@
+// ===== DAX Measures สำหรับ Dashboard ร้านจิรวัสสังฆภัณฑ์ โคราช =====
+// วิธีใส่: Modeling > New measure > วางทีละอัน (สร้างในตาราง Respondents หรือสร้างตาราง _Measures แยกก็ได้)
+
+จำนวนผู้ตอบ = DISTINCTCOUNT ( Respondents[id] )
+
+ร้อยละ =
+DIVIDE (
+    [จำนวนผู้ตอบ],
+    CALCULATE ( [จำนวนผู้ตอบ], ALLSELECTED ( Respondents ) )
+)
+
+ผู้ตอบชาย = CALCULATE ( [จำนวนผู้ตอบ], Respondents[gender] = "ชาย" )
+ผู้ตอบหญิง = CALCULATE ( [จำนวนผู้ตอบ], Respondents[gender] = "หญิง" )
+
+คะแนนเฉลี่ย = AVERAGE ( Satisfaction[score] )
+
+ค่าเบี่ยงเบนมาตรฐาน = STDEV.S ( Satisfaction[score] )
+
+คะแนนเฉลี่ยรายข้อ (ไม่รวมภาพรวมด้าน) =
+CALCULATE ( [คะแนนเฉลี่ย], Satisfaction[item_no] <= 5 )
+
+คะแนนภาพรวมด้าน =
+CALCULATE ( [คะแนนเฉลี่ย], Satisfaction[item_no] = 6 )
+
+ความพึงพอใจภาพรวมต่อร้าน = AVERAGE ( Respondents[overall] )
+
+ระดับความพึงพอใจ =
+VAR x = [คะแนนเฉลี่ยรายข้อ (ไม่รวมภาพรวมด้าน)]
+RETURN
+    SWITCH (
+        TRUE (),
+        ISBLANK ( x ), BLANK (),
+        x >= 4.21, "มากที่สุด",
+        x >= 3.41, "มาก",
+        x >= 2.61, "ปานกลาง",
+        x >= 1.81, "น้อย",
+        "น้อยที่สุด"
+    )
+
+อันดับเฉลี่ยของด้าน = AVERAGE ( AspectRanking[rank] )
+
+จำนวนที่จัดเป็นอันดับ 1 = CALCULATE ( COUNTROWS ( AspectRanking ), AspectRanking[rank] = 1 )
+
+ร้อยละกลับมาซื้อซ้ำแน่นอน =
+DIVIDE (
+    CALCULATE ( [จำนวนผู้ตอบ], Respondents[repeat] = "กลับมาแน่นอน" ),
+    [จำนวนผู้ตอบ]
+)
+
+ร้อยละสนใจสั่งออนไลน์ =
+DIVIDE (
+    CALCULATE ( [จำนวนผู้ตอบ], Respondents[online] IN { "ใช้แน่นอน", "อาจจะใช้" } ),
+    [จำนวนผู้ตอบ]
+)
+
+ป้ายแหล่งข้อมูล =
+IF (
+    CALCULATE ( COUNTROWS ( Respondents ), Respondents[data_source] = "จำลอง" ) > 0,
+    "⚠ ข้อมูลจำลองสำหรับทดสอบ (ยังไม่ใช่ผลสำรวจจริง)",
+    "ข้อมูลจากแบบสอบถามลูกค้า n = " & [จำนวนผู้ตอบ] & " คน"
+)
